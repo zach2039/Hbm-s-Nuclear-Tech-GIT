@@ -6,6 +6,7 @@ import com.hbm.forgefluid.ModForgeFluids;
 import com.hbm.interfaces.ITankPacketAcceptor;
 import com.hbm.inventory.CrystallizerRecipes;
 import com.hbm.items.ModItems;
+import com.hbm.items.machine.ItemForgeFluidIdentifier;
 import com.hbm.items.machine.ItemMachineUpgrade;
 import com.hbm.lib.HBMSoundHandler;
 import com.hbm.lib.Library;
@@ -33,9 +34,27 @@ import net.minecraftforge.fluids.capability.IFluidTankProperties;
 import net.minecraftforge.fml.common.network.NetworkRegistry.TargetPoint;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 
 public class TileEntityMachineCrystallizer extends TileEntityMachineBase implements ITickable, IEnergyUser, IFluidHandler, ITankPacketAcceptor {
+
+	public enum CrystallizerSlot {
+		INPUT,
+		BATTERY,
+		OUTPUT,
+		FLUID_INPUT,
+		FLUID_OUTPUT,
+		UPGRADE_0,
+		UPGRADE_1,
+		FLUID_IDENTIFIER
+		;
+
+		public int get() {
+			return this.ordinal();
+		}
+	}
+
 
 	public long power;
 	public static final long maxPower = 1000000;
@@ -50,20 +69,29 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 	public FluidTank tank;
 
 	public TileEntityMachineCrystallizer() {
-		super(0);
-		inventory = new ItemStackHandler(7){
+		super();
+
+		inventory = new ItemStackHandler(CrystallizerSlot.values().length) {
+
 			@Override
 			protected void onContentsChanged(int slot) {
 				super.onContentsChanged(slot);
 				markDirty();
 			}
+
 			@Override
 			public void setStackInSlot(int slot, ItemStack stack) {
 				super.setStackInSlot(slot, stack);
-				if(stack != null && slot >= 5 && slot <= 6 && stack.getItem() instanceof ItemMachineUpgrade)
-					world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, HBMSoundHandler.upgradePlug, SoundCategory.BLOCKS, 1.0F, 1.0F);
+
+				// Play sound for upgrade slotting
+				if (stack != null) {
+					if (slot == CrystallizerSlot.UPGRADE_0.get() || slot == CrystallizerSlot.UPGRADE_1.get() && stack.getItem() instanceof ItemMachineUpgrade) {
+						world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, HBMSoundHandler.upgradePlug, SoundCategory.BLOCKS, 1.0F, 1.0F);
+					}
+				}
 			}
 		};
+
 		tank = new FluidTank(16000);
 	}
 
@@ -91,9 +119,17 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 
 			this.updateConnections();
 
+			// Allow swapping of input fluid type using fluid identifier
+			if(inventory.getStackInSlot(CrystallizerSlot.FLUID_IDENTIFIER.get()).getItem() == ModItems.forge_fluid_identifier){
+				Fluid fluidFromIdentifier = ItemForgeFluidIdentifier.getType(inventory.getStackInSlot(CrystallizerSlot.FLUID_IDENTIFIER.get()));
+				if (isValidFluidForTank(fluidFromIdentifier)) {
+					setTankType(fluidFromIdentifier);
+				}
+			}
+
 			power = Library.chargeTEFromItems(inventory, 1, power, maxPower);
-			if(inputValidForTank(3) && tank.getFluidAmount() < tank.getCapacity()){
-				FFUtils.fillFromFluidContainer(inventory, tank, 3, 4);
+			if(inputValidForTank(CrystallizerSlot.FLUID_INPUT.get()) && tank.getFluidAmount() < tank.getCapacity()){
+				FFUtils.fillFromFluidContainer(inventory, tank, CrystallizerSlot.FLUID_INPUT.get(), CrystallizerSlot.FLUID_OUTPUT.get());
 			}
 
 			for(int i = 0; i < getCycleCount(); i++) {
@@ -151,6 +187,13 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 		return false;
 	}
 
+	private boolean isValidFluidForTank(Fluid stack) {
+		if(stack == null)
+			return false;
+
+		return CrystallizerRecipes.isAllowedFluid(stack);
+	}
+
 	public void setTankType(Fluid f){
 		if(f != null && (tank.getFluid() == null || (tank.getFluid() != null && tank.getFluid().getFluid() != f))){
 			tank.setFluid(new FluidStack(f, 0));
@@ -165,52 +208,59 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 
 	private void processItem() {
 
-		ItemStack result = CrystallizerRecipes.getOutputItem(inventory.getStackInSlot(0));
+		ItemStack result = CrystallizerRecipes.getOutputItem(inventory.getStackInSlot(CrystallizerSlot.INPUT.get()));
 
 		if(result == null) //never happens but you can't be sure enough
 			return;
 
-		if(inventory.getStackInSlot(2).isEmpty())
-			inventory.setStackInSlot(2, result);
-		else if(inventory.getStackInSlot(2).getCount() + result.getCount() <= inventory.getStackInSlot(2).getMaxStackSize())
-			inventory.getStackInSlot(2).grow(result.getCount());
+		if(inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).isEmpty()) {
+			inventory.setStackInSlot(CrystallizerSlot.OUTPUT.get(), result);
+		} else if(inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).getCount() + result.getCount() <= inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).getMaxStackSize()) {
+			inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).grow(result.getCount());
+		}
 
 		//Drillgon200: I think this does the same thing as decrStackSize?
 		float freeChance = this.getFreeChance();
 
 		if(freeChance == 0 || freeChance < world.rand.nextFloat())
-			inventory.getStackInSlot(0).shrink(1);
+			inventory.getStackInSlot(CrystallizerSlot.INPUT.get()).shrink(1);
 		//this.decrStackSize(0, 1);
 	}
 
 	private boolean canProcess() {
 
 		//Is there no input?
-		if(inventory.getStackInSlot(0).isEmpty())
+		if(inventory.getStackInSlot(CrystallizerSlot.INPUT.get()).isEmpty())
 			return false;
 
 		if(power < getPowerRequired())
 			return false;
 
-		ItemStack result = CrystallizerRecipes.getOutputItem(inventory.getStackInSlot(0));
+		ItemStack result = CrystallizerRecipes.getOutputItem(inventory.getStackInSlot(CrystallizerSlot.INPUT.get()));
 
 		//Or output?
 		if(result == null)
 			return false;
+
 		//Does the output not match?
-		if(!inventory.getStackInSlot(2).isEmpty() && (inventory.getStackInSlot(2).getItem() != result.getItem() || inventory.getStackInSlot(2).getItemDamage() != result.getItemDamage()))
-			return false;
-		//Or is the output slot already full?
-		if(inventory.getStackInSlot(2).getCount() >= inventory.getStackInSlot(2).getMaxStackSize())
+		if(!inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).isEmpty() && (inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).getItem() != result.getItem() || inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).getItemDamage() != result.getItemDamage()))
 			return false;
 
-		FluidStack acidFluid = CrystallizerRecipes.getOutputFluid(inventory.getStackInSlot(0));
+		//Or is the output slot already full?
+		if(inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).getCount() >= inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).getMaxStackSize())
+			return false;
+
+		FluidStack acidFluid = CrystallizerRecipes.getOutputFluid(inventory.getStackInSlot(CrystallizerSlot.INPUT.get()));
+
 		if(acidFluid == null)
 			return false;
+
 		if(tank.getFluid() == null)
 			return false;
+
 		if(acidFluid.getFluid() != tank.getFluid().getFluid())
 			return false;
+
 		acidRequired = acidFluid.amount;
 
 		if(tank.getFluidAmount() < getRequiredAcid())
@@ -306,19 +356,21 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 	
 	@Override
 	public boolean canInsertItem(int slot, ItemStack itemStack, int amount) {
-		return slot == 0 && CrystallizerRecipes.getOutputItem(itemStack) != null;
+		return slot == CrystallizerSlot.INPUT.get() && CrystallizerRecipes.getOutputItem(itemStack) != null;
 	}
 	
 	@Override
 	public boolean canExtractItem(int slot, ItemStack itemStack, int amount) {
-		return slot == 2;
+		return slot == CrystallizerSlot.OUTPUT.get();
 	}
 
 	@Override
 	public int[] getAccessibleSlotsFromSide(EnumFacing face) {
-		int side = face.getIndex();
-
-		return side == 0 ? new int[] { 2 } : new int[] { 0, 2 };
+		if (face == EnumFacing.DOWN) {
+			return new int[] { CrystallizerSlot.OUTPUT.get() };
+		} else {
+			return new int[] { CrystallizerSlot.INPUT.get(), CrystallizerSlot.OUTPUT.get() };
+		}
 	}
 
 	@Override
@@ -394,15 +446,24 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 
 	@Override
 	public <T> T getCapability(Capability<T> capability, EnumFacing facing) {
-		if(capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY) {
+		if(capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY){
+			return CapabilityItemHandler.ITEM_HANDLER_CAPABILITY.cast(inventory);
+		} else if(capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY){
 			return CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY.cast(this);
+		} else {
+			return super.getCapability(capability, facing);
 		}
-		return super.getCapability(capability, facing);
 	}
 
 	@Override
 	public boolean hasCapability(Capability<?> capability, EnumFacing facing) {
-		return capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY || super.hasCapability(capability, facing);
+		if(capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) {
+			return true;
+		} else if(capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY) {
+			return true;
+		} else {
+			return super.hasCapability(capability, facing);
+		}
 	}
 
 	@Override
