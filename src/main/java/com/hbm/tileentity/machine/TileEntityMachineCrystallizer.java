@@ -23,6 +23,7 @@ import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ITickable;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidStack;
@@ -100,8 +101,8 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 		return "container.crystallizer";
 	}
 
-	private void updateConnections() {
-
+	private void getPowerInit() {
+		// Ore Acidizers have two power ports on the left and right sides, when facing the front of the machine
 		ForgeDirection dir = ForgeDirection.getOrientation(this.getBlockMetadata() - BlockDummyable.offset);
 
 		if(dir == ForgeDirection.NORTH || dir == ForgeDirection.SOUTH) {
@@ -113,11 +114,24 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 		}
 	}
 
+	private void fillFluidInit(FluidTank type) {
+		// Ore Acidizers have 4 fluid ports, each one at the bottom middle of all horizontal sides
+		fillFluid(pos.getX() + 0, pos.getY(), pos.getZ() + 2, type);
+		fillFluid(pos.getX() + 0, pos.getY(), pos.getZ() - 2, type);
+		fillFluid(pos.getX() + 2, pos.getY(), pos.getZ() + 0, type);
+		fillFluid(pos.getX() - 2, pos.getY(), pos.getZ() + 0, type);
+	}
+
+	private void fillFluid(int x, int y, int z, FluidTank type) {
+		FFUtils.fillFluid(this, type, world, new BlockPos(x, y, z), 10239000);
+	}
+
 	@Override
 	public void update() {
 		if(!world.isRemote) {
 
-			this.updateConnections();
+			this.getPowerInit();
+			this.fillFluidInit(tank);
 
 			// Prevent crash from old ore acidizers that have incorrect num of slots in inv
 			if (inventory.getSlots() < CrystallizerSlot.values().length) {
@@ -377,6 +391,8 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 			return new int[] { CrystallizerSlot.INPUT.get(), CrystallizerSlot.OUTPUT.get() };
 		}
 	}
+
+
 
 	@Override
 	public AxisAlignedBB getRenderBoundingBox() {
