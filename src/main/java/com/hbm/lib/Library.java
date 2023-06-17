@@ -225,28 +225,36 @@ public class Library {
 
 	// Drillgon200: Just realized I copied the wrong method. God dang it.
 	// It works though. Not sure why, but it works.
-	public static long chargeTEFromItems(IItemHandlerModifiable inventory, int index, long power, long maxPower) {
-		if(inventory.getStackInSlot(index).getItem() == ModItems.battery_creative)
+	/**
+	 * Handles charging of machine tile entities
+	 * @param inventory the inventory of the charging tile entity
+	 * @param slotIndex the slot index of the battery slot
+	 * @param power the current power level of the tile entity
+	 * @param maxPower the maximum power level that the tile entity can be charged to
+	 * @return the new power level of the tile entity
+	 */
+	public static long chargeTEFromItems(IItemHandlerModifiable inventory, int slotIndex, long power, long maxPower) {
+		if(inventory.getStackInSlot(slotIndex).getItem() == ModItems.battery_creative)
 		{
 			return maxPower;
 		}
 		
-		if(inventory.getStackInSlot(index).getItem() == ModItems.fusion_core_infinite)
+		if(inventory.getStackInSlot(slotIndex).getItem() == ModItems.fusion_core_infinite)
 		{
 			return maxPower;
 		}
 		
-		if(inventory.getStackInSlot(index).getItem() instanceof IBatteryItem) {
+		if(inventory.getStackInSlot(slotIndex).getItem() instanceof IBatteryItem) {
 			
-			IBatteryItem battery = (IBatteryItem) inventory.getStackInSlot(index).getItem();
+			IBatteryItem battery = (IBatteryItem) inventory.getStackInSlot(slotIndex).getItem();
 
-			long batCharge = battery.getCharge(inventory.getStackInSlot(index));
+			long batCharge = battery.getCharge(inventory.getStackInSlot(slotIndex));
 			long batRate = battery.getDischargeRate();
 			
 			//in hHe
 			long toDischarge = Math.min(Math.min((maxPower - power), batRate), batCharge);
 			
-			battery.dischargeBattery(inventory.getStackInSlot(index), toDischarge);
+			battery.dischargeBattery(inventory.getStackInSlot(slotIndex), toDischarge);
 			power += toDischarge;
 		}
 		
