@@ -69,7 +69,7 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 	public FluidTank tank;
 
 	public TileEntityMachineCrystallizer() {
-		super();
+		super(CrystallizerSlot.values().length);
 
 		inventory = new ItemStackHandler(CrystallizerSlot.values().length) {
 
