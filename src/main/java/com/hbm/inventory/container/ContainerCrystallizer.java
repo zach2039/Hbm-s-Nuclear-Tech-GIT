@@ -13,10 +13,10 @@ import net.minecraftforge.items.SlotItemHandler;
 
 public class ContainerCrystallizer extends Container {
 
-	private TileEntityMachineCrystallizer diFurnace;
+	private TileEntityMachineCrystallizer machineCrystallizer;
 
 	public ContainerCrystallizer(InventoryPlayer invPlayer, TileEntityMachineCrystallizer tedf) {
-		diFurnace = tedf;
+		machineCrystallizer = tedf;
 
 		this.addSlotToContainer(new SlotItemHandler(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.INPUT.get(), 62, 45));
 		this.addSlotToContainer(new SlotItemHandler(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.BATTERY.get(), 152, 72));
@@ -25,6 +25,7 @@ public class ContainerCrystallizer extends Container {
 		this.addSlotToContainer(new SlotMachineOutput(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.FLUID_OUTPUT.get(), 17, 54));
 		this.addSlotToContainer(new SlotUpgrade(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.UPGRADE_0.get(), 80, 18));
 		this.addSlotToContainer(new SlotUpgrade(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.UPGRADE_1.get(), 98, 18));
+		this.addSlotToContainer(new SlotItemHandler(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.FLUID_IDENTIFIER.get(), 35, 72));
 
 		for(int i = 0; i < 3; i++)
 		{
@@ -51,8 +52,8 @@ public class ContainerCrystallizer extends Container {
 			ItemStack var5 = var4.getStack();
 			var3 = var5.copy();
 			
-            if (par2 <= diFurnace.inventory.getSlots() - 1) {
-				if (!this.mergeItemStack(var5, diFurnace.inventory.getSlots(), this.inventorySlots.size(), true))
+            if (par2 <= machineCrystallizer.inventory.getSlots() - 1) {
+				if (!this.mergeItemStack(var5, machineCrystallizer.inventory.getSlots(), this.inventorySlots.size(), true))
 				{
 					return ItemStack.EMPTY;
 				}
@@ -79,6 +80,6 @@ public class ContainerCrystallizer extends Container {
 	
 	@Override
 	public boolean canInteractWith(EntityPlayer player) {
-		return diFurnace.isUseableByPlayer(player);
+		return machineCrystallizer.isUseableByPlayer(player);
 	}
 }

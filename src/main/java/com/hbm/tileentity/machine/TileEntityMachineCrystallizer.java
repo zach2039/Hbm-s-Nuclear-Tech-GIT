@@ -119,6 +119,11 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 
 			this.updateConnections();
 
+			// Prevent crash from old ore acidizers that have incorrect num of slots in inv
+			if (inventory.getSlots() < CrystallizerSlot.values().length) {
+				inventory.setSize(CrystallizerSlot.values().length);
+			}
+
 			// Allow swapping of input fluid type using fluid identifier
 			if(inventory.getStackInSlot(CrystallizerSlot.FLUID_IDENTIFIER.get()).getItem() == ModItems.forge_fluid_identifier){
 				Fluid fluidFromIdentifier = ItemForgeFluidIdentifier.getType(inventory.getStackInSlot(CrystallizerSlot.FLUID_IDENTIFIER.get()));
@@ -446,9 +451,7 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 
 	@Override
 	public <T> T getCapability(Capability<T> capability, EnumFacing facing) {
-		if(capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY){
-			return CapabilityItemHandler.ITEM_HANDLER_CAPABILITY.cast(inventory);
-		} else if(capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY){
+		if(capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY){
 			return CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY.cast(this);
 		} else {
 			return super.getCapability(capability, facing);
@@ -457,9 +460,7 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 
 	@Override
 	public boolean hasCapability(Capability<?> capability, EnumFacing facing) {
-		if(capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) {
-			return true;
-		} else if(capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY) {
+		if (capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY) {
 			return true;
 		} else {
 			return super.hasCapability(capability, facing);
