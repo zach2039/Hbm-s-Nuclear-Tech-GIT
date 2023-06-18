@@ -18,14 +18,14 @@ public class ContainerCrystallizer extends Container {
 	public ContainerCrystallizer(InventoryPlayer invPlayer, TileEntityMachineCrystallizer tedf) {
 		machineCrystallizer = tedf;
 
-		this.addSlotToContainer(new SlotItemHandler(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.INPUT.get(), 62, 45));
-		this.addSlotToContainer(new SlotItemHandler(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.BATTERY.get(), 152, 72));
-		this.addSlotToContainer(new SlotMachineOutput(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.OUTPUT.get(), 113, 45));
-		this.addSlotToContainer(new SlotItemHandler(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.FLUID_INPUT.get(), 17, 18));
-		this.addSlotToContainer(new SlotMachineOutput(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.FLUID_OUTPUT.get(), 17, 54));
-		this.addSlotToContainer(new SlotUpgrade(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.UPGRADE_0.get(), 80, 18));
-		this.addSlotToContainer(new SlotUpgrade(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.UPGRADE_1.get(), 98, 18));
-		this.addSlotToContainer(new SlotItemHandler(tedf.inventory, TileEntityMachineCrystallizer.CrystallizerSlot.FLUID_IDENTIFIER.get(), 35, 72));
+		this.addSlotToContainer(new SlotItemHandler(tedf.inventory, TileEntityMachineCrystallizer.SLOT_INPUT, 62, 45));
+		this.addSlotToContainer(new SlotItemHandler(tedf.inventory, TileEntityMachineCrystallizer.SLOT_BATTERY, 152, 72));
+		this.addSlotToContainer(new SlotMachineOutput(tedf.inventory, TileEntityMachineCrystallizer.SLOT_OUTPUT, 113, 45));
+		this.addSlotToContainer(new SlotItemHandler(tedf.inventory, TileEntityMachineCrystallizer.SLOT_FLUID_INPUT, 17, 18));
+		this.addSlotToContainer(new SlotMachineOutput(tedf.inventory, TileEntityMachineCrystallizer.SLOT_FLUID_OUTPUT, 17, 54));
+		this.addSlotToContainer(new SlotUpgrade(tedf.inventory, TileEntityMachineCrystallizer.SLOT_UPGRADE_0, 80, 18));
+		this.addSlotToContainer(new SlotUpgrade(tedf.inventory, TileEntityMachineCrystallizer.SLOT_UPGRADE_1, 98, 18));
+		this.addSlotToContainer(new SlotItemHandler(tedf.inventory, TileEntityMachineCrystallizer.SLOT_FLUID_IDENTIFIER, 35, 72));
 
 		for(int i = 0; i < 3; i++)
 		{

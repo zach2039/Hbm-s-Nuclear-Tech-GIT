@@ -40,22 +40,14 @@ import net.minecraftforge.items.ItemStackHandler;
 
 public class TileEntityMachineCrystallizer extends TileEntityMachineBase implements ITickable, IEnergyUser, IFluidHandler, ITankPacketAcceptor {
 
-	public enum CrystallizerSlot {
-		INPUT,
-		BATTERY,
-		OUTPUT,
-		FLUID_INPUT,
-		FLUID_OUTPUT,
-		UPGRADE_0,
-		UPGRADE_1,
-		FLUID_IDENTIFIER
-		;
-
-		public int get() {
-			return this.ordinal();
-		}
-	}
-
+	public static final int SLOT_INPUT = 0;
+	public static final int SLOT_BATTERY = 1;
+	public static final int SLOT_OUTPUT = 2;
+	public static final int SLOT_FLUID_INPUT = 3;
+	public static final int SLOT_FLUID_OUTPUT = 4;
+	public static final int SLOT_UPGRADE_0 = 5;
+	public static final int SLOT_UPGRADE_1 = 6;
+	public static final int SLOT_FLUID_IDENTIFIER = 7;
 
 	public long power;
 	public static final long maxPower = 1000000;
@@ -70,9 +62,9 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 	public FluidTank tank;
 
 	public TileEntityMachineCrystallizer() {
-		super(CrystallizerSlot.values().length);
+		super(8);
 
-		inventory = new ItemStackHandler(CrystallizerSlot.values().length) {
+		inventory = new ItemStackHandler(8) {
 
 			@Override
 			protected void onContentsChanged(int slot) {
@@ -86,7 +78,7 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 
 				// Play sound for upgrade slotting
 				if (stack != null) {
-					if (slot == CrystallizerSlot.UPGRADE_0.get() || slot == CrystallizerSlot.UPGRADE_1.get() && stack.getItem() instanceof ItemMachineUpgrade) {
+					if (slot == SLOT_UPGRADE_0 || slot == SLOT_UPGRADE_1 && stack.getItem() instanceof ItemMachineUpgrade) {
 						world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, HBMSoundHandler.upgradePlug, SoundCategory.BLOCKS, 1.0F, 1.0F);
 					}
 				}
@@ -101,7 +93,7 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 		return "container.crystallizer";
 	}
 
-	private void getPowerInit() {
+	private void updateConnections() {
 		// Ore Acidizers have two power ports on the left and right sides, when facing the front of the machine
 		ForgeDirection dir = ForgeDirection.getOrientation(this.getBlockMetadata() - BlockDummyable.offset);
 
@@ -114,41 +106,28 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 		}
 	}
 
-	private void fillFluidInit(FluidTank type) {
-		// Ore Acidizers have 4 fluid ports, each one at the bottom middle of all horizontal sides
-		fillFluid(pos.getX() + 0, pos.getY(), pos.getZ() + 2, type);
-		fillFluid(pos.getX() + 0, pos.getY(), pos.getZ() - 2, type);
-		fillFluid(pos.getX() + 2, pos.getY(), pos.getZ() + 0, type);
-		fillFluid(pos.getX() - 2, pos.getY(), pos.getZ() + 0, type);
-	}
-
-	private void fillFluid(int x, int y, int z, FluidTank type) {
-		FFUtils.fillFluid(this, type, world, new BlockPos(x, y, z), 10239000);
-	}
-
 	@Override
 	public void update() {
 		if(!world.isRemote) {
 
-			this.getPowerInit();
-			this.fillFluidInit(tank);
+			this.updateConnections();
 
 			// Prevent crash from old ore acidizers that have incorrect num of slots in inv
-			if (inventory.getSlots() < CrystallizerSlot.values().length) {
-				inventory.setSize(CrystallizerSlot.values().length);
+			if (inventory.getSlots() < 8) {
+				inventory.setSize(8);
 			}
 
 			// Allow swapping of input fluid type using fluid identifier
-			if(inventory.getStackInSlot(CrystallizerSlot.FLUID_IDENTIFIER.get()).getItem() == ModItems.forge_fluid_identifier){
-				Fluid fluidFromIdentifier = ItemForgeFluidIdentifier.getType(inventory.getStackInSlot(CrystallizerSlot.FLUID_IDENTIFIER.get()));
-				if (isValidFluidForTank(fluidFromIdentifier)) {
+			if(inventory.getStackInSlot(SLOT_FLUID_IDENTIFIER).getItem() == ModItems.forge_fluid_identifier){
+				Fluid fluidFromIdentifier = ItemForgeFluidIdentifier.getType(inventory.getStackInSlot(SLOT_FLUID_IDENTIFIER));
+				if (canSwapFluidType(fluidFromIdentifier)) {
 					setTankType(fluidFromIdentifier);
 				}
 			}
 
-			power = Library.chargeTEFromItems(inventory, 1, power, maxPower);
-			if(inputValidForTank(CrystallizerSlot.FLUID_INPUT.get()) && tank.getFluidAmount() < tank.getCapacity()){
-				FFUtils.fillFromFluidContainer(inventory, tank, CrystallizerSlot.FLUID_INPUT.get(), CrystallizerSlot.FLUID_OUTPUT.get());
+			power = Library.chargeTEFromItems(inventory, SLOT_BATTERY, power, maxPower);
+			if(inputValidForTank(SLOT_FLUID_INPUT) && tank.getFluidAmount() < tank.getCapacity()){
+				FFUtils.fillFromFluidContainer(inventory, tank, SLOT_FLUID_INPUT, SLOT_FLUID_OUTPUT);
 			}
 
 			for(int i = 0; i < getCycleCount(); i++) {
@@ -206,11 +185,14 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 		return false;
 	}
 
-	private boolean isValidFluidForTank(Fluid stack) {
-		if(stack == null)
+	private boolean canSwapFluidType(Fluid fluid) {
+		if(fluid == null)
 			return false;
 
-		return CrystallizerRecipes.isAllowedFluid(stack);
+		boolean isEmptyTank = (tank.getFluid() == null || tank.getFluidAmount() == 0);
+		boolean isAllowedFluid = CrystallizerRecipes.isAllowedFluid(fluid);
+
+		return isEmptyTank && isAllowedFluid;
 	}
 
 	public void setTankType(Fluid f){
@@ -227,49 +209,49 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 
 	private void processItem() {
 
-		ItemStack result = CrystallizerRecipes.getOutputItem(inventory.getStackInSlot(CrystallizerSlot.INPUT.get()));
+		ItemStack result = CrystallizerRecipes.getOutputItem(inventory.getStackInSlot(SLOT_INPUT));
 
 		if(result == null) //never happens but you can't be sure enough
 			return;
 
-		if(inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).isEmpty()) {
-			inventory.setStackInSlot(CrystallizerSlot.OUTPUT.get(), result);
-		} else if(inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).getCount() + result.getCount() <= inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).getMaxStackSize()) {
-			inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).grow(result.getCount());
+		if(inventory.getStackInSlot(SLOT_OUTPUT).isEmpty()) {
+			inventory.setStackInSlot(SLOT_OUTPUT, result);
+		} else if(inventory.getStackInSlot(SLOT_OUTPUT).getCount() + result.getCount() <= inventory.getStackInSlot(SLOT_OUTPUT).getMaxStackSize()) {
+			inventory.getStackInSlot(SLOT_OUTPUT).grow(result.getCount());
 		}
 
 		//Drillgon200: I think this does the same thing as decrStackSize?
 		float freeChance = this.getFreeChance();
 
 		if(freeChance == 0 || freeChance < world.rand.nextFloat())
-			inventory.getStackInSlot(CrystallizerSlot.INPUT.get()).shrink(1);
+			inventory.getStackInSlot(SLOT_INPUT).shrink(1);
 		//this.decrStackSize(0, 1);
 	}
 
 	private boolean canProcess() {
 
 		//Is there no input?
-		if(inventory.getStackInSlot(CrystallizerSlot.INPUT.get()).isEmpty())
+		if(inventory.getStackInSlot(SLOT_INPUT).isEmpty())
 			return false;
 
 		if(power < getPowerRequired())
 			return false;
 
-		ItemStack result = CrystallizerRecipes.getOutputItem(inventory.getStackInSlot(CrystallizerSlot.INPUT.get()));
+		ItemStack result = CrystallizerRecipes.getOutputItem(inventory.getStackInSlot(SLOT_INPUT));
 
 		//Or output?
 		if(result == null)
 			return false;
 
 		//Does the output not match?
-		if(!inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).isEmpty() && (inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).getItem() != result.getItem() || inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).getItemDamage() != result.getItemDamage()))
+		if(!inventory.getStackInSlot(SLOT_OUTPUT).isEmpty() && (inventory.getStackInSlot(SLOT_OUTPUT).getItem() != result.getItem() || inventory.getStackInSlot(SLOT_OUTPUT).getItemDamage() != result.getItemDamage()))
 			return false;
 
 		//Or is the output slot already full?
-		if(inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).getCount() >= inventory.getStackInSlot(CrystallizerSlot.OUTPUT.get()).getMaxStackSize())
+		if(inventory.getStackInSlot(SLOT_OUTPUT).getCount() >= inventory.getStackInSlot(SLOT_OUTPUT).getMaxStackSize())
 			return false;
 
-		FluidStack acidFluid = CrystallizerRecipes.getOutputFluid(inventory.getStackInSlot(CrystallizerSlot.INPUT.get()));
+		FluidStack acidFluid = CrystallizerRecipes.getOutputFluid(inventory.getStackInSlot(SLOT_INPUT));
 
 		if(acidFluid == null)
 			return false;
@@ -375,20 +357,20 @@ public class TileEntityMachineCrystallizer extends TileEntityMachineBase impleme
 	
 	@Override
 	public boolean canInsertItem(int slot, ItemStack itemStack, int amount) {
-		return slot == CrystallizerSlot.INPUT.get() && CrystallizerRecipes.getOutputItem(itemStack) != null;
+		return slot == SLOT_INPUT && CrystallizerRecipes.getOutputItem(itemStack) != null;
 	}
 	
 	@Override
 	public boolean canExtractItem(int slot, ItemStack itemStack, int amount) {
-		return slot == CrystallizerSlot.OUTPUT.get();
+		return slot == SLOT_OUTPUT;
 	}
 
 	@Override
 	public int[] getAccessibleSlotsFromSide(EnumFacing face) {
 		if (face == EnumFacing.DOWN) {
-			return new int[] { CrystallizerSlot.OUTPUT.get() };
+			return new int[] { SLOT_OUTPUT };
 		} else {
-			return new int[] { CrystallizerSlot.INPUT.get(), CrystallizerSlot.OUTPUT.get() };
+			return new int[] { SLOT_INPUT, SLOT_OUTPUT };
 		}
 	}
 
